@@ -12,7 +12,7 @@ function makeId(): string {
  * operation's own `parameters` add to (or, matched on `in`+`name`, override)
  * them. Reimplemented here rather than imported — apiuikit/plugin
  * deliberately doesn't pre-extract parameters (see
- * `OpenAPIOperationActionsContext`'s doc comment), so every plugin resolves
+ * `OpenAPIOperationPluginContext`'s doc comment), so every plugin resolves
  * this itself from the raw `document`. */
 export function resolveOperationParameters(
   document: OpenAPIDocumentData,

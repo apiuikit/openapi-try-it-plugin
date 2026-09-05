@@ -1,3 +1,5 @@
+import { randomId } from "./randomId";
+
 export interface AuthorizationCodeTokenResult {
   accessToken: string;
   tokenType?: string;
@@ -51,12 +53,9 @@ export function buildAuthorizationUrl(input: BuildAuthorizationUrlInput): string
   return url.toString();
 }
 
-/** Random enough for CSRF purposes (not a security token itself) — falls
- * back to `Math.random` for environments without `crypto.randomUUID`
- * (older browsers, non-secure-context iframes). */
+/** Random enough for CSRF purposes (not a security token itself). */
 export function generateState(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return randomId();
 }
 
 function base64UrlEncode(bytes: Uint8Array): string {

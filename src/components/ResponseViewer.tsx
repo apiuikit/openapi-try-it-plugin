@@ -83,7 +83,7 @@ function JsonModal({ src, onClose }: { src: object; onClose: () => void }) {
   if (!portalHost) return null;
 
   return createPortal(
-    <div style={styles.modalOverlay} onClick={onClose}>
+    <div data-tryit-modal="" style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modalContent} onClick={(event) => event.stopPropagation()}>
         <div style={styles.modalHeader}>
           <span style={styles.sectionTitle}>Response</span>

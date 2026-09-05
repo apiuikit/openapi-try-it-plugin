@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDocumentContext } from "apiuikit/plugin";
-import type { OpenAPIOperationActionsContext } from "apiuikit/plugin";
+import type { OpenAPIOperationPluginContext } from "apiuikit/plugin";
 import { AuthPanel } from "./components/AuthPanel";
 import { BinaryBodyEditor } from "./components/BinaryBodyEditor";
 import { BodyEditor } from "./components/BodyEditor";
+import { ExportMenu } from "./components/ExportMenu";
 import { MultipartBodyEditor } from "./components/MultipartBodyEditor";
 import { ParamsTable } from "./components/ParamsTable";
 import { ResponseViewer } from "./components/ResponseViewer";
@@ -29,7 +30,7 @@ const COOKIE_HEADER_WARNING =
   "Browsers block scripts from setting the Cookie header — these values won't be sent.";
 
 export function createTryItPanel(options: TryItPluginOptions = {}) {
-  return function TryItPanel({ document, method, path }: OpenAPIOperationActionsContext) {
+  return function TryItPanel({ document, method, path }: OpenAPIOperationPluginContext) {
     const { deref } = useDocumentContext();
     const operation = document.paths?.[path]?.[method];
     const servers = useMemo(() => document.servers ?? [], [document.servers]);
@@ -101,6 +102,26 @@ export function createTryItPanel(options: TryItPluginOptions = {}) {
 
     if (!operation) return null;
 
+    function currentRequest() {
+      const baseUrl = resolveServerUrl(servers[selectedServerIndex] ?? servers[0], serverVariables);
+      return buildRequest({
+        method,
+        baseUrl,
+        path,
+        pathParams,
+        queryParams,
+        headerParams,
+        cookieParams,
+        security: security[selectedSecurityIndex] ?? null,
+        credentials,
+        bodyMode: bodyMedia?.mode,
+        bodyText,
+        bodyContentType: bodyMedia?.contentType,
+        multipartFields,
+        binaryFile,
+      });
+    }
+
     async function handleSend() {
       if (bodyMedia?.mode === "text" && bodyMedia.contentType && bodyText.trim().length > 0) {
         const isJsonBody = /^(application\/json|[\w.-]+\+json)(?:\s*;|$)/i.test(bodyMedia.contentType);
@@ -118,24 +139,7 @@ export function createTryItPanel(options: TryItPluginOptions = {}) {
       setSending(true);
       setOutcome(null);
       try {
-        const baseUrl = resolveServerUrl(servers[selectedServerIndex] ?? servers[0], serverVariables);
-        const request = buildRequest({
-          method,
-          baseUrl,
-          path,
-          pathParams,
-          queryParams,
-          headerParams,
-          cookieParams,
-          security: security[selectedSecurityIndex] ?? null,
-          credentials,
-          bodyMode: bodyMedia?.mode,
-          bodyText,
-          bodyContentType: bodyMedia?.contentType,
-          multipartFields,
-          binaryFile,
-        });
-        const result = await executeRequest(request, { proxyUrl: options.proxyUrl });
+        const result = await executeRequest(currentRequest(), { proxyUrl: options.proxyUrl });
         setOutcome(result);
       } finally {
         setSending(false);
@@ -173,9 +177,18 @@ export function createTryItPanel(options: TryItPluginOptions = {}) {
           <BinaryBodyEditor contentType={bodyMedia.contentType} file={binaryFile} onChange={setBinaryFile} />
         )}
 
-        <button type="button" style={styles.button} onClick={handleSend} disabled={sending}>
-          {sending ? "Sending…" : "Send"}
-        </button>
+        <div style={styles.actions}>
+          <button type="button" style={styles.button} onClick={handleSend} disabled={sending}>
+            {sending ? "Sending…" : "Send"}
+          </button>
+          <ExportMenu
+            name={operation.summary ?? operation.operationId ?? `${method.toUpperCase()} ${path}`}
+            method={method}
+            path={path}
+            getRequest={currentRequest}
+            outcome={outcome}
+          />
+        </div>
 
         <ResponseViewer outcome={outcome} sending={sending} documentedResponses={operation.responses} />
       </div>

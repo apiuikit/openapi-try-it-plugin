@@ -1,6 +1,6 @@
 # @apiuikit/openapi-try-it-plugin
 
-A "Try it out" request-sending plugin for [apiuikit](https://apiuikit.com), filling the `openapi.operation.tab` slot with a real, fetch-executing panel — path/query/header/cookie parameter tables (including `style: deepObject` and array-style query params), a server-variable picker, API key / Bearer / Basic / OAuth2 `client_credentials` / OAuth2 `authorization_code` (with PKCE) auth with masked/reveal secret inputs, a JSON/multipart/binary body editor, and a response viewer.
+A "Try it out" request-sending plugin for [apiuikit](https://apiuikit.com), filling the `openapi.operation.tab` slot with a real, fetch-executing panel — path/query/header/cookie parameter tables (including `style: deepObject` and array-style query params), a server-variable picker, API key / Bearer / Basic / OAuth2 `client_credentials` / OAuth2 `authorization_code` (with PKCE) auth with masked/reveal secret inputs, a JSON/multipart/binary body editor, a response viewer, and export of the current request to Postman, Insomnia, or HAR.
 
 Not bundled into apiuikit itself — install and register it explicitly.
 
@@ -80,7 +80,7 @@ Schemes that declare only flows the panel does not automate fall back to a plain
 
 ## Scope (v1)
 
-Supported: path/query/header/cookie parameters including `deepObject`-style and array-style (`form`/`spaceDelimited`/`pipeDelimited`, exploded or joined) query params; server variable substitution; a body editor that adapts to the declared content type — raw JSON/text, a `multipart/form-data` field table (text + file inputs, including repeated files under one field name for an array-of-binary property), or a single-file picker for a binary body (`application/octet-stream`, `image/*`, or any `format: binary` schema); response status/headers/body display alongside the operation's documented response codes; per-document credential/server-variable persistence in `sessionStorage`.
+Supported: path/query/header/cookie parameters including `deepObject`-style and array-style (`form`/`spaceDelimited`/`pipeDelimited`, exploded or joined) query params; server variable substitution; a body editor that adapts to the declared content type — raw JSON/text, a `multipart/form-data` field table (text + file inputs, including repeated files under one field name for an array-of-binary property), or a single-file picker for a binary body (`application/octet-stream`, `image/*`, or any `format: binary` schema); response status/headers/body display alongside the operation's documented response codes; per-document credential/server-variable persistence in `sessionStorage`; export of the current request (as assembled, including entered credentials) as a Postman Collection v2.1, Insomnia v4 JSON, or HAR 1.2 file. File/multipart bytes aren't embedded — the export keeps field names and filenames, and the importer re-attaches files.
 
 Not yet supported (tracked as follow-up work, not silently missing):
 - AsyncAPI / WebSocket / Kafka / MQTT "try it" (this package only fills `openapi.operation.tab`).
@@ -95,3 +95,5 @@ npm run test       # vitest
 npm run typecheck
 npm run build
 ```
+
+Manual QA against the apiuikit playground: see [TESTING.md](./TESTING.md).
