@@ -79,19 +79,27 @@ const ARRAY_STYLE_DELIMITERS: Record<string, string> = {
  * params serialized per their `style`/`explode` — exploded as repeated keys
  * (`id=3&id=4`, the default for `style: form`), or joined with the style's
  * delimiter otherwise (`,` for `form`, `|` for `pipeDelimited`, a space for
- * `spaceDelimited` — URLSearchParams percent-encodes the space itself). */
+ * `spaceDelimited` — URLSearchParams percent-encodes the space itself).
+ *
+ * Builds the query string on its own `URLSearchParams` and concatenates it
+ * onto `url` as a string, rather than round-tripping the whole URL through
+ * `new URL(url).toString()` — that reserialization percent-encodes any
+ * literal `{token}` still sitting in the path from an unset path param
+ * (`buildRequestPath` deliberately leaves those unresolved and unencoded so
+ * the URL stays readable while it's being filled in), turning it into
+ * `%7Btoken%7D` even when there are zero query params to add. */
 export function applyQueryParams(url: string, queryParams: EditableParamRow[]): string {
-  const parsed = new URL(url);
+  const searchParams = new URLSearchParams();
   for (const row of queryParams) {
     if (!row.enabled) continue;
     if (row.isArray) {
       const values = (row.arrayValues ?? []).filter((entry) => entry.enabled && entry.value !== "").map((entry) => entry.value);
       if (values.length === 0) continue;
       if (row.arrayExplode) {
-        for (const value of values) parsed.searchParams.append(row.name, value);
+        for (const value of values) searchParams.append(row.name, value);
       } else {
         const delimiter = ARRAY_STYLE_DELIMITERS[row.arrayStyle ?? "form"];
-        parsed.searchParams.append(row.name, values.join(delimiter));
+        searchParams.append(row.name, values.join(delimiter));
       }
     } else if (row.deepObject) {
       // Last enabled entry for a given key wins, rather than sending
@@ -103,12 +111,13 @@ export function applyQueryParams(url: string, queryParams: EditableParamRow[]): 
         if (!entry.enabled || entry.key === "") continue;
         byKey.set(entry.key, entry.value);
       }
-      for (const [key, value] of byKey) parsed.searchParams.append(`${row.name}[${key}]`, value);
+      for (const [key, value] of byKey) searchParams.append(`${row.name}[${key}]`, value);
     } else if (row.value !== "") {
-      parsed.searchParams.append(row.name, row.value);
+      searchParams.append(row.name, row.value);
     }
   }
-  return parsed.toString();
+  const query = searchParams.toString();
+  return query ? `${url}${url.includes("?") ? "&" : "?"}${query}` : url;
 }
 
 /** Resolves `operation.security ?? document.security` against
@@ -285,9 +294,12 @@ export function buildRequest(input: BuildRequestInput): BuiltRequest {
     headers.push(...auth.headers);
     cookiePairs.push(...auth.cookies);
     if (auth.queryParams.length > 0) {
-      const withAuthQuery = new URL(url);
-      for (const q of auth.queryParams) withAuthQuery.searchParams.append(q.name, q.value);
-      url = withAuthQuery.toString();
+      // String concatenation, not `new URL(url).toString()` — see
+      // `applyQueryParams`'s doc comment for why round-tripping through
+      // `URL` here would mangle an unresolved `{pathParam}` token.
+      const authSearch = new URLSearchParams();
+      for (const q of auth.queryParams) authSearch.append(q.name, q.value);
+      url = `${url}${url.includes("?") ? "&" : "?"}${authSearch.toString()}`;
     }
   }
 

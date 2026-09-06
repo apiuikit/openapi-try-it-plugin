@@ -24,10 +24,14 @@ npm run dev --prefix packages/playground
 ```
 
 The playground loads this plugin via `packages/playground/src/plugins/tryItPlugin.ts`
-(local-only; not committed). Open `http://localhost:5173`, click **Edit** (top right),
-click the document-URL field, type `torture`, and pick **Unrealistic Torture Test
-(OpenAPI)** — that's the fixture most cases below reference. Click **Preview**, find
-the operation, click **Try it**.
+(local-only; not committed), which registers **both** plugins this package exports —
+`tryItPlugin` (the `openapi.operation.tab` fill) and `tryItButtonPlugin` (the
+`openapi.operation.reference.supplementary` fill) — so both are testable without any
+extra wiring; see `Playground.tsx`'s `PLUGINS` array. Open `http://localhost:5173`,
+click **Edit** (top right), click the document-URL field, type `torture`, and pick
+**Unrealistic Torture Test (OpenAPI)** — that's the fixture most cases below
+reference. Click **Preview**, find the operation, click the **Try it** tab (sections 1
+through 8 below) or the **Try it** row in the Reference panel (section 9).
 
 A few cases need a security scheme or field shape the bundled fixtures don't happen to
 wire up to any operation (noted inline as **ad hoc**). For those, use the editor's
@@ -373,7 +377,9 @@ Use `GET /users/{userId}` and `GET /search` in the torture fixture.
 
 This needs `packages/playground/src/plugins/tryItPlugin.ts` (or wherever the plugin is
 registered) temporarily changed to `createTryItPlugin({ proxyUrl: "http://localhost:PORT" })`
-pointed at a local echo/proxy server you control.
+pointed at a local echo/proxy server you control. `createTryItButtonPlugin` takes the
+same `options`, so this applies equally to the Reference-panel row's modal — no need
+to test both separately unless something in section 9 suggests otherwise.
 
 - [ ] With `proxyUrl` set, confirm requests go to `${proxyUrl}?target=<url-encoded target URL>` instead of hitting the API origin directly — this is the one case where you can actually inspect the real assembled request (headers, multipart boundary, binary bytes) end to end.
 - [ ] Same-origin cookies (typed into the Cookies table are never sent, per the table's warning) — but confirm a genuinely same-origin proxy request **does** carry the browser's real cookies for that origin automatically.
@@ -397,9 +403,36 @@ fixture, with a path/query value and a JSON body). Export is next to **Send**.
 
 ---
 
+## 9. Reference-panel row (`createTryItButtonPlugin`)
+
+Everything above (sections 1-8) exercises the *content* of the panel, which is shared
+— this section is only about the things unique to the row + modal wrapping it. Use
+any operation in the torture fixture; a `GET` and a `POST`/`PUT`/`DELETE` one, to check
+the method-badge coloring below.
+
+- [ ] Open the Reference tab (not "Try it") for an operation — a full-width **Try it** row renders in the Reference panel, styled to match the host's Authorization panel (bordered, rounded corners, its background) — a Play icon + "Try it" label on the left, an expand icon on the right — spanning the panel's full width, not sized to its own text.
+- [ ] The playground boots on its own Netlify theme (`Playground.tsx`'s `netlifyTheme` — real `config.theme.colors`, not just CSS-var fallbacks) — confirm the row's background and "Try it" label color pick up that theme rather than this plugin's own CSS-variable defaults (compare against the Authorization panel directly above/below it, which should read as the same family of color).
+- [ ] Click the row — a modal opens, sized visibly smaller than the viewport (margin around all four edges), not a full-bleed overlay.
+- [ ] Modal title shows a colored method badge + the path template (e.g. `/accounts/{account_id}`) — not a generic "Try it" label.
+- [ ] **Method badge color** — compare the modal title's badge directly against the same operation's method badge in the endpoint list / the host's own operation header (open devtools and eyeball or sample both) — they should be the same color for the same method (GET/POST/PUT/PATCH/DELETE each get a distinct pastel color; this plugin hardcodes a fixed palette rather than following the host's brand/primary theme color, since the host's own badges aren't brand-colored either — unlike the trigger row above, which *does* follow the brand color).
+- [ ] Modal body is a left/right split — request-building (server/params/auth/body/Send) on the left, Response on the right — **not** one long vertically-scrolling column.
+- [ ] Make the left column tall enough to scroll (any operation with several params, or the torture fixture's more heavily-parameterized ones) — scroll it to the bottom; the right (Response) column stays at its own scroll position, unaffected.
+- [ ] Directly under the title, a URL bar shows the live, fully-resolved request URL (server + substituted path params + query string) as plain text — **no** method text duplicated inside it (the title already has it).
+- [ ] For an operation with one server and no server `variables` (most of the torture fixture) — confirm **no** "SERVER" section renders at all in the left column (the URL bar already shows the resolved server).
+- [ ] For an operation whose document declares 2+ servers, or a server with `variables` (the torture fixture's `GET /users/{userId}` — see section 4) — confirm the "SERVER" section **does** render (dropdown and/or variable inputs), since there's something to actually pick or fill in there.
+- [ ] Type into a path-variable field — the URL bar updates live to reflect it, no reload needed.
+- [ ] Leave a path variable empty — the URL bar shows the literal `{token}`, not `%7Btoken%7D` (this was a real bug — round-tripping the URL through `new URL(...).toString()` silently percent-encoded it; see `requestBuilder.ts`'s `applyQueryParams` doc comment and its regression tests).
+- [ ] Click **Send** inside the modal — the request executes and the Response column renders status/headers/body, same as the tab.
+- [ ] Close the modal three ways — press **Escape**, click the dimmed overlay outside the modal, click the **×** button — all three work.
+- [ ] Open the modal, fill in some fields, close it, reopen it for the **same** operation — state resets (the modal unmounts the panel on close, unlike the tab, which stays mounted) — this is expected, not a bug.
+- [ ] With `createTryItPlugin` (the tab) and `createTryItButtonPlugin` (the row) both registered — already the case in this playground, see Setup above — confirm both the tab and the Reference-panel row show up for the same operation, independently of each other.
+
+---
+
 ## Regression sweep (do this after any change, not just once)
 
 - [ ] Switch between two different operations in the same document — every table (params, auth, body) resets to the new operation's own state, nothing bleeds over from the previous one.
 - [ ] Switch tabs (Reference → Try it → Reference → Try it) on the same operation — no duplicate state, no stale error messages left over from a previous Send.
+- [ ] With both plugins registered (see section 9), open the Reference-panel modal and the tab for the same operation in turn — no crashes, no state leaking between the two.
 - [ ] Browser devtools console stays free of uncaught errors/warnings from this plugin's own code throughout a full pass (pre-existing apiuikit-internal warnings, if any, aren't this plugin's concern).
 - [ ] `npm run test`, `npm run typecheck`, `npm run build`, `npx eslint src` all clean.

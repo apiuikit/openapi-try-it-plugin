@@ -16,10 +16,16 @@ export function ServerVariables({ servers, selectedServerIndex, onSelectServer, 
   if (!server) return null;
   const variableNames = Object.keys(server.variables ?? {});
 
+  // Nothing to pick (only one server) and nothing to fill in (no
+  // variables) — the resolved URL is already shown in full by
+  // `RequestUrlBar`, so a read-only "Server" section repeating that same
+  // base URL underneath it adds nothing.
+  if (servers.length <= 1 && variableNames.length === 0) return null;
+
   return (
     <div style={styles.section}>
       <span style={styles.sectionTitle}>Server</span>
-      {servers.length > 1 ? (
+      {servers.length > 1 && (
         <select style={styles.select} value={selectedServerIndex} onChange={(event) => onSelectServer(Number(event.target.value))}>
           {servers.map((s, index) => (
             <option key={s.url} value={index}>
@@ -28,8 +34,6 @@ export function ServerVariables({ servers, selectedServerIndex, onSelectServer, 
             </option>
           ))}
         </select>
-      ) : (
-        <span style={styles.hint}>{server.url}</span>
       )}
       {variableNames.length > 0 && (
         <div style={styles.table}>

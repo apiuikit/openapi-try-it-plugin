@@ -200,6 +200,23 @@ describe("applyQueryParams", () => {
     const url = applyQueryParams("https://api.example.com/items", params);
     expect(new URL(url).searchParams.has("tags")).toBe(false);
   });
+
+  it("returns the url unchanged, without percent-encoding it, when there are no params to add", () => {
+    // Regression: this used to round-trip through `new URL(...).toString()`
+    // even with zero params, which silently encoded a still-unresolved
+    // `{token}` (see buildRequestPath's "leaves an unresolved token in
+    // place" test above) into `%7Btoken%7D`.
+    expect(applyQueryParams("https://api.example.com/users/{userId}", [])).toBe(
+      "https://api.example.com/users/{userId}",
+    );
+  });
+
+  it("appends the query string without mangling an unresolved path token", () => {
+    const params = [row({ name: "active", value: "true", enabled: true })];
+    expect(applyQueryParams("https://api.example.com/users/{userId}", params)).toBe(
+      "https://api.example.com/users/{userId}?active=true",
+    );
+  });
 });
 
 describe("resolveSecurityRequirements", () => {
@@ -348,6 +365,23 @@ describe("buildRequest", () => {
     expect(request.headers).toContainEqual({ name: "Cookie", value: "session=abc123" });
     expect(request.headers).toContainEqual({ name: "Content-Type", value: "application/json" });
     expect(request.body).toBe('{"name":"Ada"}');
+  });
+
+  it("keeps an unset path param readable (not percent-encoded) in the assembled url", () => {
+    const request = buildRequest({
+      method: "get",
+      baseUrl: "https://api.example.com",
+      path: "/users/{userId}",
+      pathParams: [],
+      queryParams: [],
+      headerParams: [],
+      cookieParams: [],
+      security: null,
+      credentials: {},
+      bodyText: "",
+    });
+
+    expect(request.url).toBe("https://api.example.com/users/{userId}");
   });
 
   it("omits the body for GET requests even if body text is present", () => {

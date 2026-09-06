@@ -1,6 +1,6 @@
-import { createTryItPlugin } from "./plugin";
+import { createTryItButtonPlugin, createTryItPlugin } from "./plugin";
 
-export { createTryItPlugin };
+export { createTryItButtonPlugin, createTryItPlugin };
 export default createTryItPlugin();
 
 export type {
