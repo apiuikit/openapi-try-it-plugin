@@ -2,7 +2,6 @@
 
 [![npm version](https://img.shields.io/npm/v/@apiuikit/openapi-try-it-plugin.svg?label=%40apiuikit%2Fopenapi-try-it-plugin)](https://www.npmjs.com/package/@apiuikit/openapi-try-it-plugin)
 [![npm downloads](https://img.shields.io/npm/dm/@apiuikit/openapi-try-it-plugin.svg)](https://www.npmjs.com/package/@apiuikit/openapi-try-it-plugin)
-[![CI](https://img.shields.io/github/actions/workflow/status/apiuikit/openapi-try-it-plugin/ci.yml?branch=main)](https://github.com/apiuikit/openapi-try-it-plugin/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![Docs](https://img.shields.io/badge/docs-apiuikit.com-1473FF.svg)](https://apiuikit.com/plugins/openapi-try-it)
 
