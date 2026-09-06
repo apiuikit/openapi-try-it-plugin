@@ -1,6 +1,6 @@
 {
   "name": "@apiuikit/openapi-try-it-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A \"Try it out\" request-sending plugin for apiuikit, filling the openapi.operation.tab slot.",
   "license": "Apache-2.0",
   "bugs": {
