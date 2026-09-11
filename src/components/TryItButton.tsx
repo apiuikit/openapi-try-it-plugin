@@ -19,7 +19,7 @@ export function createTryItButton(options: TryItPluginOptions = {}) {
   const TryItSplitPanel = createTryItSplitPanel(options);
 
   return function TryItButton({ document, method, path }: OpenAPIOperationPluginContext) {
-    const { portalHost, config } = useDocumentContext();
+    const { portalHost, config, resolvedMode } = useDocumentContext();
     const [isOpen, setIsOpen] = useState(false);
     const operation = document.paths?.[path]?.[method];
 
@@ -43,8 +43,10 @@ export function createTryItButton(options: TryItPluginOptions = {}) {
           // Full-width row matching Authorization's geometry. Colors come
           // from `useDocumentContext().config.theme` (primary.600 for the
           // label, light/dark.border for the chrome) with CSS-variable
-          // fallbacks for anything the host omitted.
-          style={tryItRowStyle(config?.theme)}
+          // fallbacks for anything the host omitted. `resolvedMode` says
+          // which of theme.light/theme.dark is actually active — config.theme
+          // alone doesn't, since a host can set both and switch via mode.
+          style={tryItRowStyle(config?.theme, resolvedMode)}
           onClick={() => setIsOpen(true)}
         >
           <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>

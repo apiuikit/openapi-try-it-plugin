@@ -247,14 +247,17 @@ export const styles: Record<string, CSSProperties> = {
 
 /** Overlay the host's `config.theme` onto `styles.rowButton`.
  *
- * Chrome (border, optional `colors.neutral.50`) comes from the active
- * `light`/`dark` block — light wins if both are set, matching
- * `buildThemeVars`. The label uses `colors.primary.600`, the same accent
- * apiuikit's own chrome uses for interactive text, rather than painting
- * `primary.50` across the whole row. Omitted fields keep the CSS-variable
- * fallbacks: `config` is unmerged with defaults. */
-export function tryItRowStyle(theme?: ThemeConfig): CSSProperties {
-  const mode = theme?.light ?? theme?.dark;
+ * Chrome (border, optional `colors.neutral.50`) comes from whichever of
+ * `light`/`dark` `resolvedMode` says is active — that's apiuikit's own answer
+ * (via `useDocumentContext().resolvedMode`), not a guess: `theme.mode` lets a
+ * host set both palettes and switch between them, so `theme.light`/
+ * `theme.dark` being present says nothing about which one is actually
+ * rendering. The label uses `colors.primary.600`, the same accent apiuikit's
+ * own chrome uses for interactive text, rather than painting `primary.50`
+ * across the whole row. Omitted fields keep the CSS-variable fallbacks:
+ * `config` is unmerged with defaults. */
+export function tryItRowStyle(theme?: ThemeConfig, resolvedMode?: "light" | "dark"): CSSProperties {
+  const mode = resolvedMode === "dark" ? theme?.dark : theme?.light;
   const primary600 = theme?.colors?.primary?.[600];
   const neutral50 = theme?.colors?.neutral?.[50];
   return {
