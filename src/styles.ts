@@ -110,6 +110,26 @@ export const styles: Record<string, CSSProperties> = {
     cursor: "pointer",
     gap: "0.5rem",
   },
+  /** Compact trigger for `openapi.operation.header`. Shares the row button's
+   * accent and border but sized for the panel's header row, where it sits
+   * next to a truncating address and the close button: no `width: 100%`, and
+   * `whiteSpace: nowrap` so the label can't wrap to a second line and grow
+   * the header's height. */
+  headerButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.375rem",
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    fontSize: "0.75rem",
+    fontWeight: 500,
+    padding: "0.25rem 0.625rem",
+    borderRadius: "0.375rem",
+    border: `1px solid ${color.border}`,
+    background: color.neutral50,
+    color: color.primary600,
+    cursor: "pointer",
+  },
   actions: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" },
   menu: {
     position: "absolute",
@@ -254,11 +274,23 @@ export const styles: Record<string, CSSProperties> = {
  * `primary.50` across the whole row. Omitted fields keep the CSS-variable
  * fallbacks: `config` is unmerged with defaults. */
 export function tryItRowStyle(theme?: ThemeConfig): CSSProperties {
+  return themedTrigger(styles.rowButton, theme);
+}
+
+/** The header-row trigger, themed exactly like `tryItRowStyle` — same accent
+ * and chrome, different geometry. */
+export function tryItHeaderStyle(theme?: ThemeConfig): CSSProperties {
+  return themedTrigger(styles.headerButton, theme);
+}
+
+// `base` is indexed out of `styles` (a `Record<string, CSSProperties>`), so
+// it reads as possibly-undefined; spreading that is a no-op either way.
+function themedTrigger(base: CSSProperties | undefined, theme?: ThemeConfig): CSSProperties {
   const mode = theme?.light ?? theme?.dark;
   const primary600 = theme?.colors?.primary?.[600];
   const neutral50 = theme?.colors?.neutral?.[50];
   return {
-    ...styles.rowButton,
+    ...base,
     ...(mode?.border ? { border: `1px solid ${mode.border}` } : {}),
     ...(neutral50 ? { background: neutral50 } : {}),
     ...(primary600 ? { color: primary600 } : {}),

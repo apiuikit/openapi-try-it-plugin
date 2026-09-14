@@ -7,7 +7,7 @@ import {
   filenameForExport,
   queryPairsFromUrl,
 } from "../exportRequest";
-import { buildRequest } from "../requestBuilder";
+import { buildRequest, type BuildRequestInput } from "../requestBuilder";
 import type { BuiltRequest, EditableParamRow, FetchOutcome } from "../types";
 
 function row(overrides: Partial<EditableParamRow>): EditableParamRow {
@@ -16,6 +16,21 @@ function row(overrides: Partial<EditableParamRow>): EditableParamRow {
 
 const exportedAt = new Date("2026-09-05T10:00:00.000Z");
 const insomniaIds = { workspace: "wrk_test", request: "req_test" };
+
+/** Minimal GET with nothing filled in — redaction cases add only the one
+ * field under test, so a leak can't hide behind unrelated fixture data. */
+const emptyRequest: BuildRequestInput = {
+  method: "get",
+  baseUrl: "https://api.example.com",
+  path: "/things",
+  pathParams: [],
+  queryParams: [],
+  headerParams: [],
+  cookieParams: [],
+  credentials: {},
+  security: null,
+  bodyText: "",
+};
 
 function jsonPost(): BuiltRequest {
   return buildRequest({
@@ -77,8 +92,8 @@ describe("exportAsPostmanCollection", () => {
             method: "POST",
             header: [
               { key: "X-Request-Id", value: "abc" },
-              { key: "Authorization", value: "Bearer tok_123" },
-              { key: "Cookie", value: "session=s3cret" },
+              { key: "Authorization", value: "{{Authorization}}" },
+              { key: "Cookie", value: "{{Cookie}}" },
               { key: "Content-Type", value: "application/json" },
             ],
             url: {
@@ -95,6 +110,12 @@ describe("exportAsPostmanCollection", () => {
             },
           },
         },
+      ],
+      // Declared up front so Postman shows the redacted credentials as
+      // blanks to fill in, rather than as unresolved template text.
+      variable: [
+        { key: "Authorization", value: "", type: "string" },
+        { key: "Cookie", value: "", type: "string" },
       ],
     });
   });
@@ -177,8 +198,8 @@ describe("exportAsInsomnia", () => {
       body: { mimeType: "application/json", text: '{"name":"Ada"}' },
       headers: [
         { name: "X-Request-Id", value: "abc" },
-        { name: "Authorization", value: "Bearer tok_123" },
-        { name: "Cookie", value: "session=s3cret" },
+        { name: "Authorization", value: "{{Authorization}}" },
+        { name: "Cookie", value: "{{Cookie}}" },
         { name: "Content-Type", value: "application/json" },
       ],
     });
@@ -222,11 +243,12 @@ describe("exportAsHar", () => {
               method: "POST",
               url: "https://api.example.com/users/usr%201?active=true",
               httpVersion: "HTTP/1.1",
-              cookies: [{ name: "session", value: "s3cret" }],
+              // Redacted along with the Cookie header it mirrors.
+          cookies: [],
               headers: [
                 { name: "X-Request-Id", value: "abc" },
-                { name: "Authorization", value: "Bearer tok_123" },
-                { name: "Cookie", value: "session=s3cret" },
+                { name: "Authorization", value: "{{Authorization}}" },
+                { name: "Cookie", value: "{{Cookie}}" },
                 { name: "Content-Type", value: "application/json" },
               ],
               queryString: [{ name: "active", value: "true" }],
@@ -357,5 +379,85 @@ describe("buildExport", () => {
     expect(buildExport("postman", input).info).toBeDefined();
     expect(buildExport("insomnia", input).__export_format).toBe(4);
     expect((buildExport("har", input).log as { version: string }).version).toBe("1.2");
+  });
+});
+
+describe("credential redaction", () => {
+  /** Every format, checked by scanning the serialized file rather than by
+   * asserting a shape — a credential leaking through a field the assertions
+   * above don't name is exactly the failure this guards against. */
+  function exportsOf(request: BuiltRequest): string[] {
+    return (["postman", "insomnia", "har"] as const).map((format) =>
+      JSON.stringify(buildExport(format, { request, name: "Export", exportedAt })),
+    );
+  }
+
+  it("keeps an apiKey header out of every export", () => {
+    const request = buildRequest({
+      ...emptyRequest,
+      security: [
+        { schemeName: "key", scheme: { type: "apiKey", in: "header", name: "X-API-Key" }, scopes: [] },
+      ],
+      credentials: { key: { kind: "apiKey", value: "sk_live_secret" } },
+    });
+
+    for (const exported of exportsOf(request)) {
+      expect(exported).not.toContain("sk_live_secret");
+      expect(exported).toContain("{{X-API-Key}}");
+    }
+  });
+
+  it("keeps an apiKey query parameter out of every export, URL included", () => {
+    const request = buildRequest({
+      ...emptyRequest,
+      security: [
+        { schemeName: "key", scheme: { type: "apiKey", in: "query", name: "api_key" }, scopes: [] },
+      ],
+      credentials: { key: { kind: "apiKey", value: "sk_live_secret" } },
+    });
+
+    expect(request.url).toContain("sk_live_secret"); // the live request still carries it
+    for (const exported of exportsOf(request)) {
+      expect(exported).not.toContain("sk_live_secret");
+      expect(exported).toContain("{{api_key}}");
+    }
+  });
+
+  it("keeps basic-auth credentials out of every export", () => {
+    const request = buildRequest({
+      ...emptyRequest,
+      security: [{ schemeName: "basic", scheme: { type: "http", scheme: "basic" }, scopes: [] }],
+      credentials: { basic: { kind: "basic", username: "ada", password: "hunter2" } },
+    });
+
+    const encoded = btoa("ada:hunter2");
+    for (const exported of exportsOf(request)) {
+      expect(exported).not.toContain(encoded);
+      expect(exported).not.toContain("hunter2");
+    }
+  });
+
+  it("redacts a token typed straight into the headers table, with no scheme involved", () => {
+    const request = buildRequest({
+      ...emptyRequest,
+      headerParams: [row({ in: "header", name: "Authorization", value: "Bearer typed_by_hand" })],
+    });
+
+    for (const exported of exportsOf(request)) {
+      expect(exported).not.toContain("typed_by_hand");
+    }
+  });
+
+  it("leaves non-credential headers and params alone", () => {
+    const request = buildRequest({
+      ...emptyRequest,
+      headerParams: [row({ in: "header", name: "X-Request-Id", value: "abc123" })],
+      queryParams: [row({ name: "active", value: "true" })],
+    });
+
+    for (const exported of exportsOf(request)) {
+      expect(exported).toContain("abc123");
+      expect(exported).toContain("active");
+    }
   });
 });

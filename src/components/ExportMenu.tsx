@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useEscapeLayer } from "../escapeLayer";
 import { buildExport, filenameForExport, type ExportFormat } from "../exportRequest";
 import { styles } from "../styles";
 import type { BuiltRequest, FetchOutcome } from "../types";
@@ -36,29 +37,18 @@ export function ExportMenu({ name, method, path, getRequest, outcome }: ExportMe
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // Escape closes the menu without also dismissing the try-it modal or
+  // apiuikit's operation panel underneath it. See `useEscapeLayer`.
+  useEscapeLayer(open, () => setOpen(false));
+
   useEffect(() => {
     if (!open) return;
     function onPointerDown(event: PointerEvent) {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
     }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      // The response JSON modal also listens for Escape. Swallowing the
-      // event here while that overlay is open would leave it stuck for
-      // keyboard-only users (export menu open + modal open). Let it win.
-      if (document.querySelector("[data-tryit-modal]")) return;
-      // Capture + stopImmediatePropagation so Escape closes this menu without
-      // also dismissing apiuikit's operation side panel (which listens for
-      // Escape on document in the bubble phase).
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      setOpen(false);
-    }
     document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown, true);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown, true);
     };
   }, [open]);
 

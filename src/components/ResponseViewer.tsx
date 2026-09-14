@@ -1,9 +1,10 @@
 import ReactJsonView, { type ThemeObject } from "@microlink/react-json-view";
 import { useDocumentContext, type OpenAPIOperationData } from "apiuikit/plugin";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import type { FetchOutcome } from "../types";
 import { color, statusColor, styles } from "../styles";
+import { useEscapeLayer } from "../escapeLayer";
 import { CloseIcon, ExpandIcon } from "./icons";
 
 interface ResponseViewerProps {
@@ -72,13 +73,7 @@ function JsonTree({ src }: { src: object }) {
 function JsonModal({ src, onClose }: { src: object; onClose: () => void }) {
   const { portalHost } = useDocumentContext();
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  useEscapeLayer(true, onClose);
 
   if (!portalHost) return null;
 

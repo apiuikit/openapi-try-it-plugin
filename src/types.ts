@@ -158,10 +158,27 @@ export interface EditableBodyFieldRow {
   description?: string;
 }
 
+/** Which parts of a `BuiltRequest` hold values the user typed as
+ * credentials, so exports can redact them. Names rather than values: the
+ * same header can legitimately appear twice, and a value could coincide
+ * with a non-secret one. */
+export interface RequestSecrets {
+  /** Header names carrying credential material — `Authorization`, an
+   * apiKey scheme's own header name, or `Cookie` when a scheme contributed
+   * a cookie (the whole header is treated as secret, since credential and
+   * plain cookies share it). */
+  headerNames: string[];
+  /** Query parameter names carrying credential material (apiKey `in: query`). */
+  queryNames: string[];
+}
+
 export interface BuiltRequest {
   method: HttpMethod;
   url: string;
   headers: Array<{ name: string; value: string }>;
+  /** Populated by `buildRequest`. Exports redact these; the live request
+   * sends them as-is. */
+  secrets: RequestSecrets;
   /** `FormData` for a `multipart` body (fetch derives the `Content-Type`
    * boundary from it itself — no header is set for that case) or a single
    * `File` for a `binary` body; a plain string otherwise. */

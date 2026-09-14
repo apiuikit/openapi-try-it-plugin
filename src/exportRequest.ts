@@ -227,29 +227,135 @@ function harResponse(outcome: FetchOutcome | null | undefined): Record<string, u
   };
 }
 
+/** Placeholder written in place of a credential. `{{name}}` rather than a
+ * fixed "REDACTED" string because Postman and Insomnia both resolve that
+ * syntax as a variable — the export stays runnable once the importer fills
+ * the value in, instead of failing with a literal token in the header. */
+function placeholderFor(name: string): string {
+  return `{{${name}}}`;
+}
+
+/** Rewrites only the values of the named query parameters, by string
+ * surgery on the query portion. Deliberately not `new URL(...)`: see
+ * `queryPairsFromUrl` for why round-tripping mangles an unresolved
+ * `{pathParam}` token. Placeholders are left unencoded, which is what
+ * Postman expects of `{{var}}` in a URL. */
+function redactUrlQuery(url: string, names: string[]): string {
+  if (names.length === 0) return url;
+  const separator = url.indexOf("?");
+  if (separator === -1) return url;
+
+  const lowered = names.map((name) => name.toLowerCase());
+  const [base, query] = [url.slice(0, separator), url.slice(separator + 1)];
+  const redacted = query
+    .split("&")
+    .map((pair) => {
+      const equals = pair.indexOf("=");
+      const rawName = equals === -1 ? pair : pair.slice(0, equals);
+      let decodedName = rawName;
+      try {
+        decodedName = decodeURIComponent(rawName);
+      } catch {
+        // Malformed percent-encoding — compare the raw name instead.
+      }
+      if (!lowered.includes(decodedName.toLowerCase())) return pair;
+      return `${rawName}=${placeholderFor(decodedName)}`;
+    })
+    .join("&");
+
+  return `${base}?${redacted}`;
+}
+
+/**
+ * Strips the user's credentials out of a request before it is written to a
+ * file. Exports are routinely attached to bug reports and support tickets,
+ * so a live token in a downloaded .har outlives the tab it was typed into —
+ * the value is replaced by a `{{name}}` placeholder the importing tool can
+ * prompt for.
+ *
+ * `buildRequest` marks which parts are credential-derived (see
+ * `RequestSecrets`); this never inspects values, so a token that happens to
+ * match a non-secret string is not redacted by accident, and an API key in
+ * a custom header is redacted even though its name is unremarkable.
+ */
+export function redactSecrets(request: BuiltRequest): BuiltRequest {
+  const { queryNames } = request.secrets;
+  const headerNames = secretHeaderNames(request);
+  if (headerNames.length === 0 && queryNames.length === 0) return request;
+
+  const loweredHeaders = headerNames.map((name) => name.toLowerCase());
+  return {
+    ...request,
+    url: redactUrlQuery(request.url, queryNames),
+    headers: request.headers.map((header) =>
+      loweredHeaders.includes(header.name.toLowerCase())
+        ? { ...header, value: placeholderFor(header.name) }
+        : header,
+    ),
+  };
+}
+
+/** Headers that carry credentials by convention, redacted even when the
+ * value didn't come from the auth panel — someone typing a token straight
+ * into the headers table is the likeliest way a secret reaches an export
+ * without `buildRequest` knowing it is one. */
+const ALWAYS_SECRET_HEADERS = ["authorization", "proxy-authorization", "cookie"];
+
+/** Scheme-derived header names plus the ones sensitive by convention.
+ * Matched case-insensitively; the request's own casing is preserved in the
+ * placeholder. */
+function secretHeaderNames(request: BuiltRequest): string[] {
+  const names = new Set(request.secrets.headerNames);
+  for (const header of request.headers) {
+    if (ALWAYS_SECRET_HEADERS.includes(header.name.toLowerCase())) names.add(header.name);
+  }
+  return [...names];
+}
+
+/** Whether the Cookie header was replaced by a placeholder. */
+function isCookieRedacted(request: BuiltRequest): boolean {
+  return secretHeaderNames(request).some((name) => name.toLowerCase() === "cookie");
+}
+
+/** Every credential placeholder in a redacted request, for tools that can
+ * declare the variables up front (Postman's collection-level `variable`). */
+function redactedNames(request: BuiltRequest): string[] {
+  return [...new Set([...secretHeaderNames(request), ...request.secrets.queryNames])];
+}
+
 /** Postman Collection v2.1 — a one-request collection matching the panel's
- * current assembled request (resolved URL, real credentials, typed-in body). */
+ * current assembled request (resolved URL, typed-in body). Credentials are
+ * redacted to `{{name}}` placeholders and declared as collection variables,
+ * so Postman shows them as blanks to fill rather than shipping live secrets
+ * in the file. */
 export function exportAsPostmanCollection(input: ExportRequestInput): Record<string, unknown> {
-  const body = postmanBody(serializeBody(input.request));
+  const redacted = redactSecrets(input.request);
+  const body = postmanBody(serializeBody(redacted));
   const request: Record<string, unknown> = {
-    method: input.request.method.toUpperCase(),
-    header: input.request.headers.map((header) => ({ key: header.name, value: header.value })),
-    url: postmanUrl(input.request.url),
+    method: redacted.method.toUpperCase(),
+    header: redacted.headers.map((header) => ({ key: header.name, value: header.value })),
+    url: postmanUrl(redacted.url),
   };
   if (body) request.body = body;
 
-  return {
+  const variables = redactedNames(input.request);
+  const collection: Record<string, unknown> = {
     info: {
       name: input.name,
       schema: POSTMAN_SCHEMA,
     },
     item: [{ name: input.name, request }],
   };
+  if (variables.length > 0) {
+    collection.variable = variables.map((key) => ({ key, value: "", type: "string" }));
+  }
+  return collection;
 }
 
 /** Insomnia export format v4 (JSON). v4 still imports in current Insomnia;
  * the newer YAML v5 format isn't required for a single-request handoff. */
 export function exportAsInsomnia(input: ExportRequestInput): Record<string, unknown> {
+  const redacted = redactSecrets(input.request);
   const exportedAt = input.exportedAt ?? new Date();
   const timestamp = exportedAt.getTime();
   const workspaceId = input.insomniaIds?.workspace ?? insomniaId("wrk");
@@ -276,13 +382,13 @@ export function exportAsInsomnia(input: ExportRequestInput): Record<string, unkn
         parentId: workspaceId,
         modified: timestamp,
         created: timestamp,
-        url: input.request.url,
+        url: redacted.url,
         name: input.name,
         description: "",
-        method: input.request.method.toUpperCase(),
-        body: insomniaBody(serializeBody(input.request)),
+        method: redacted.method.toUpperCase(),
+        body: insomniaBody(serializeBody(redacted)),
         parameters: [],
-        headers: input.request.headers.map((header) => ({ name: header.name, value: header.value })),
+        headers: redacted.headers.map((header) => ({ name: header.name, value: header.value })),
         authentication: {},
         metaSortKey: -1,
         isPrivate: false,
@@ -303,18 +409,22 @@ export function exportAsInsomnia(input: ExportRequestInput): Record<string, unkn
  * Cookie header into `cookies` as well as left on `headers`, matching what
  * the panel assembled even though a browser would strip that header on send. */
 export function exportAsHar(input: ExportRequestInput): Record<string, unknown> {
+  const redacted = redactSecrets(input.request);
   const exportedAt = input.exportedAt ?? new Date();
-  const body = serializeBody(input.request);
+  const body = serializeBody(redacted);
   const postData = harPostData(body);
   const durationMs = input.outcome?.kind === "success" ? input.outcome.result.durationMs : 0;
 
   const request: Record<string, unknown> = {
-    method: input.request.method.toUpperCase(),
-    url: input.request.url,
+    method: redacted.method.toUpperCase(),
+    url: redacted.url,
     httpVersion: "HTTP/1.1",
-    cookies: cookiesFromHeaders(input.request.headers),
-    headers: input.request.headers.map((header) => ({ name: header.name, value: header.value })),
-    queryString: queryPairsFromUrl(input.request.url),
+    // Empty once the Cookie header is redacted: this array is a convenience
+    // mirror of that header, and splitting a `{{Cookie}}` placeholder on
+    // ";" would yield a junk entry rather than anything importable.
+    cookies: isCookieRedacted(input.request) ? [] : cookiesFromHeaders(redacted.headers),
+    headers: redacted.headers.map((header) => ({ name: header.name, value: header.value })),
+    queryString: queryPairsFromUrl(redacted.url),
     headersSize: -1,
     bodySize: body.kind === "text" ? utf8ByteLength(body.text) : -1,
   };

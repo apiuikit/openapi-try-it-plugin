@@ -12,6 +12,7 @@ import type {
   CredentialMap,
   EditableBodyFieldRow,
   EditableParamRow,
+  RequestSecrets,
   ResolvedSecurityScheme,
   SecurityRequirement,
   ServerVariableValues,
@@ -289,10 +290,20 @@ export function buildRequest(input: BuildRequestInput): BuiltRequest {
     if (row.enabled && row.value !== "") cookiePairs.push(`${row.name}=${row.value}`);
   }
 
+  const secrets: RequestSecrets = { headerNames: [], queryNames: [] };
+
   if (input.security) {
     const auth = applySecurity(input.security, input.credentials);
     headers.push(...auth.headers);
     cookiePairs.push(...auth.cookies);
+    // Recorded as the request is assembled rather than re-derived later:
+    // once a credential is merged into `headers`/`url` it is
+    // indistinguishable from a value the user typed into the params table.
+    for (const header of auth.headers) secrets.headerNames.push(header.name);
+    for (const q of auth.queryParams) secrets.queryNames.push(q.name);
+    // Credential and plain cookies share one header, so the whole thing is
+    // secret once a scheme has contributed to it.
+    if (auth.cookies.length > 0) secrets.headerNames.push("Cookie");
     if (auth.queryParams.length > 0) {
       // String concatenation, not `new URL(url).toString()` — see
       // `applyQueryParams`'s doc comment for why round-tripping through
@@ -331,6 +342,7 @@ export function buildRequest(input: BuildRequestInput): BuiltRequest {
     method: input.method,
     url,
     headers,
+    secrets,
     body,
   };
 }

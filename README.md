@@ -19,7 +19,7 @@ Peer dependencies: `apiuikit` ^1.7, React 18+.
 
 ## Usage
 
-Two layouts — register either, or both.
+Two layouts to register here, plus a third that apiuikit provides itself.
 
 Keep the `plugins` array stable by defining it outside the component or with `useMemo`. A new array on every render re-registers the plugins and can reset the selected tab.
 
@@ -65,13 +65,35 @@ export default function App() {
 }
 ```
 
-### Both
+### Panel header — built into apiuikit
+
+The header layout doesn't need this package. apiuikit ships it and loads it on demand:
+
+```tsx
+import { OpenAPI } from "apiuikit";
+import "apiuikit/style.css";
+import doc from "./openapi.json";
+
+const config = { show: { tryIt: true } };
+
+export default function App() {
+  return <OpenAPI openapi={doc} config={config} />;
+}
+```
+
+That puts a compact **Try it** button in the operation panel's header, next to the close button, opening the same modal as the button layout above. It is off by default — see [Configuration](https://apiuikit.com/docs/configuration#showtryit).
+
+Install this package when you want a layout the built-in doesn't offer (a full tab, or a row inside the Reference panel), or when you need `proxyUrl`.
+
+### Several at once
 
 ```tsx
 import tryItPlugin, { createTryItButtonPlugin } from "@apiuikit/openapi-try-it-plugin";
 
 const plugins = [tryItPlugin, createTryItButtonPlugin()];
 ```
+
+Each entry point keeps its own request state — filling in parameters under one does not carry over to another. Registering more than one is supported, but one is usually what you want.
 
 ## CORS
 
@@ -87,7 +109,7 @@ const plugins = [createTryItPlugin({ proxyUrl: "https://your-proxy.example.com/t
 
 Requests then go to `${proxyUrl}?target=<url-encoded API URL>` instead of the API origin.
 
-`createTryItButtonPlugin` accepts the same `proxyUrl` option.
+`createTryItButtonPlugin` accepts the same `proxyUrl` option. The built-in header layout does not take options — a host needing `proxyUrl` registers a plugin from this package instead.
 
 ## Supported auth
 
