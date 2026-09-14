@@ -1,22 +1,38 @@
-import { styles } from "../styles";
+import type { ReactNode } from "react";
+import { methodTagStyle, styles } from "../styles";
 
 interface RequestUrlBarProps {
+  method: string;
   url: string;
+  /** Trailing actions — the export menu in both layouts, plus a close
+   * button in the modal. */
+  children?: ReactNode;
+  /** `"header"` is the modal's own header row: flush with the modal edges,
+   * bottom border, fixed height. `"bar"` is the tab's bordered pill, which
+   * sits in a free-flowing page column and may wrap. */
+  variant?: "bar" | "header";
 }
 
-/** Shows the exact absolute URL `Send` will hit — server plus substituted
- * path params plus query string — since nothing else in the panel does:
- * the "Server" section only shows the base URL/template, and path params
- * are edited in their own table without a preview of the resulting path.
+/** The panel's header: method, the exact absolute URL `Send` will hit
+ * (server plus substituted path params plus query string), and the panel's
+ * top-level actions.
  *
- * URL text only, no method badge — both places this renders (the tab, and
- * the reference-panel button's modal) already show the method right next
- * to it: the host's own page header for the tab, this plugin's own modal
- * title for the modal. Repeating it a third time here was redundant. */
-export function RequestUrlBar({ url }: RequestUrlBarProps) {
+ * This is the only place the resolved URL appears — the "Server" section
+ * shows just the base URL/template, and path params are edited in their own
+ * table with no preview of the resulting path. It used to render as a second
+ * bar below the modal's method+path title, which said the same thing twice
+ * in less room; the title now carries the full URL instead. */
+export function RequestUrlBar({ method, url, children, variant = "bar" }: RequestUrlBarProps) {
+  const isHeader = variant === "header";
   return (
-    <div style={styles.urlBar}>
-      <span style={styles.urlText}>{url}</span>
+    <div style={isHeader ? styles.headerRow : styles.urlBar}>
+      <span style={methodTagStyle(method)}>{method.toUpperCase()}</span>
+      {/* `title` so a URL truncated in the modal's fixed-height header is
+          still readable in full on hover. */}
+      <span style={isHeader ? styles.urlTextSingleLine : styles.urlText} title={url}>
+        {url}
+      </span>
+      {children}
     </div>
   );
 }

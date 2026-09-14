@@ -7,6 +7,7 @@ import { MultipartBodyEditor } from "./components/MultipartBodyEditor";
 import { ParamsTable } from "./components/ParamsTable";
 import { RequestUrlBar } from "./components/RequestUrlBar";
 import { ResponseViewer } from "./components/ResponseViewer";
+import { SendFooter } from "./components/SendFooter";
 import { ServerVariables } from "./components/ServerVariables";
 import { styles } from "./styles";
 import type { TryItPluginOptions } from "./types";
@@ -64,51 +65,51 @@ export function createTryItPanel(options: TryItPluginOptions = {}) {
 
     return (
       <div style={styles.panel}>
-        <RequestUrlBar url={currentRequest().url} />
-
-        <ServerVariables
-          servers={servers}
-          selectedServerIndex={selectedServerIndex}
-          onSelectServer={setSelectedServerIndex}
-          values={serverVariables}
-          onChange={setServerVariables}
-        />
-
-        <ParamsTable title="Path variables" rows={pathParams} onChange={setPathParams} />
-        <ParamsTable title="Query parameters" rows={queryParams} onChange={setQueryParams} allowCustomRows />
-        <ParamsTable title="Headers" rows={headerParams} onChange={setHeaderParams} allowCustomRows />
-        <ParamsTable title="Cookies" rows={cookieParams} onChange={setCookieParams} allowCustomRows warning={COOKIE_HEADER_WARNING} />
-
-        <AuthPanel
-          requirements={security}
-          selectedIndex={selectedSecurityIndex}
-          onSelectRequirement={setSelectedSecurityIndex}
-          credentials={credentials}
-          onChangeCredentials={setCredentials}
-        />
-
-        {bodyMedia?.mode === "text" && (
-          <BodyEditor contentType={bodyMedia.contentType} value={bodyText} onChange={setBodyText} error={bodyError} />
-        )}
-        {bodyMedia?.mode === "multipart" && <MultipartBodyEditor rows={multipartFields} onChange={setMultipartFields} />}
-        {bodyMedia?.mode === "binary" && (
-          <BinaryBodyEditor contentType={bodyMedia.contentType} file={binaryFile} onChange={setBinaryFile} />
-        )}
-
-        <div style={styles.actions}>
-          <button type="button" style={styles.button} onClick={handleSend} disabled={sending}>
-            {sending ? "Sending…" : "Send"}
-          </button>
+        <RequestUrlBar method={method} url={currentRequest().url}>
           <ExportMenu
+            iconOnly
             name={operation.summary ?? operation.operationId ?? `${method.toUpperCase()} ${path}`}
             method={method}
             path={path}
             getRequest={currentRequest}
             outcome={outcome}
           />
+        </RequestUrlBar>
+
+        <div style={styles.requestGroup}>
+          <ServerVariables
+            servers={servers}
+            selectedServerIndex={selectedServerIndex}
+            onSelectServer={setSelectedServerIndex}
+            values={serverVariables}
+            onChange={setServerVariables}
+          />
+
+          <ParamsTable title="Path variables" rows={pathParams} onChange={setPathParams} />
+          <ParamsTable title="Query parameters" rows={queryParams} onChange={setQueryParams} allowCustomRows />
+          <ParamsTable title="Headers" rows={headerParams} onChange={setHeaderParams} allowCustomRows />
+          <ParamsTable title="Cookies" rows={cookieParams} onChange={setCookieParams} allowCustomRows warning={COOKIE_HEADER_WARNING} />
+
+          <AuthPanel
+            requirements={security}
+            selectedIndex={selectedSecurityIndex}
+            onSelectRequirement={setSelectedSecurityIndex}
+            credentials={credentials}
+            onChangeCredentials={setCredentials}
+          />
+
+          {bodyMedia?.mode === "text" && (
+            <BodyEditor contentType={bodyMedia.contentType} value={bodyText} onChange={setBodyText} error={bodyError} />
+          )}
+          {bodyMedia?.mode === "multipart" && <MultipartBodyEditor rows={multipartFields} onChange={setMultipartFields} />}
+          {bodyMedia?.mode === "binary" && (
+            <BinaryBodyEditor contentType={bodyMedia.contentType} file={binaryFile} onChange={setBinaryFile} />
+          )}
+
+          <SendFooter variant="sticky" sending={sending} onSend={handleSend} />
         </div>
 
-        <ResponseViewer outcome={outcome} sending={sending} documentedResponses={operation.responses} />
+        <ResponseViewer outcome={outcome} sending={sending} />
       </div>
     );
   };

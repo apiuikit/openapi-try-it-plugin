@@ -1,16 +1,15 @@
 import ReactJsonView, { type ThemeObject } from "@microlink/react-json-view";
-import { useDocumentContext, type OpenAPIOperationData } from "apiuikit/plugin";
+import { useDocumentContext } from "apiuikit/plugin";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import type { FetchOutcome } from "../types";
 import { color, statusColor, styles } from "../styles";
 import { useEscapeLayer } from "../escapeLayer";
-import { CloseIcon, ExpandIcon } from "./icons";
+import { CloseIcon, ExpandIcon, SatelliteIcon } from "./icons";
 
 interface ResponseViewerProps {
   outcome: FetchOutcome | null;
   sending: boolean;
-  documentedResponses: OpenAPIOperationData["responses"];
 }
 
 /** Maps ReactJsonView's base-16 slots onto our own CSS-var-backed color
@@ -95,39 +94,23 @@ function JsonModal({ src, onClose }: { src: object; onClose: () => void }) {
   );
 }
 
-export function ResponseViewer({ outcome, sending, documentedResponses }: ResponseViewerProps) {
-  const documentedCodes = Object.keys(documentedResponses ?? {});
+export function ResponseViewer({ outcome, sending }: ResponseViewerProps) {
   const jsonBody = outcome?.kind === "success" ? parseJsonObjectBody(outcome.result.body) : undefined;
   const [isExpanded, setIsExpanded] = useState(false);
+  const isEmpty = !sending && !outcome;
 
   return (
-    <div style={styles.section}>
+    <div style={isEmpty ? { ...styles.section, ...styles.sectionFill } : styles.section}>
       <span style={styles.sectionTitle}>Response</span>
 
-      {documentedCodes.length > 0 && (
-        <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
-          {documentedCodes.map((code) => {
-            const isLive = outcome?.kind === "success" && String(outcome.result.status) === code;
-            return (
-              <span
-                key={code}
-                style={{
-                  fontSize: "0.7rem",
-                  padding: "0.125rem 0.4375rem",
-                  borderRadius: "999px",
-                  border: `1px solid ${isLive ? statusColor(Number(code)) : color.border}`,
-                  color: isLive ? statusColor(Number(code)) : color.textMuted,
-                }}
-                title={documentedResponses?.[code]?.description}
-              >
-                {code}
-              </span>
-            );
-          })}
+      {sending && <span style={styles.hint}>Sending…</span>}
+
+      {isEmpty && (
+        <div style={styles.emptyState}>
+          <SatelliteIcon />
+          <span>Send the request to see the response here.</span>
         </div>
       )}
-
-      {sending && <span style={styles.hint}>Sending…</span>}
 
       {outcome?.kind === "cors-error" && (
         <p style={styles.errorText} role="alert">

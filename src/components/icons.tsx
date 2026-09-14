@@ -34,3 +34,26 @@ export function CloseIcon() {
     </svg>
   );
 }
+
+export function ExportIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+/** Empty-state mark for the response section, at placeholder size rather
+ * than the inline-action size the other icons use. */
+export function SatelliteIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 10a7.31 7.31 0 0 0 10 10Z" />
+      <path d="m9 15 3-3" />
+      <path d="M17 13a6 6 0 0 0-6-6" />
+      <path d="M21 13A10 10 0 0 0 11 3" />
+    </svg>
+  );
+}

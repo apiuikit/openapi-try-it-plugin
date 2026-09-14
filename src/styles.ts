@@ -33,6 +33,30 @@ export const styles: Record<string, CSSProperties> = {
     border: `1px solid ${color.border}`,
     background: color.surface,
   },
+  /** The modal's header row: same padding/border as `modalHeader`, but laid
+   * out as method + flexing URL + trailing actions rather than two
+   * space-between groups. */
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.75rem 1rem",
+    borderBottom: `1px solid ${color.border}`,
+    flex: "0 0 auto",
+  },
+  /** URL in a fixed-height header — truncates rather than wrapping, so a
+   * long query string can't push the header taller. The full value stays
+   * available via `title`. */
+  urlTextSingleLine: {
+    fontSize: "0.75rem",
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+    color: color.textPrimary,
+    flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
   urlText: {
     fontSize: "0.75rem",
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -74,6 +98,23 @@ export const styles: Record<string, CSSProperties> = {
     fontSize: "0.8125rem",
     fontWeight: 500,
     padding: "0.375rem 0.875rem",
+    borderRadius: "0.375rem",
+    border: "none",
+    background: color.primary600,
+    color: "#fff",
+    cursor: "pointer",
+  },
+  /** `Send` only. A separate style rather than widening `button`, which the
+   * OAuth panels' inline "Authorize" buttons also use and which should stay
+   * sized to its label. */
+  sendButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    fontSize: "0.8125rem",
+    fontWeight: 500,
+    padding: "0.5rem 0.875rem",
     borderRadius: "0.375rem",
     border: "none",
     background: color.primary600,
@@ -130,7 +171,6 @@ export const styles: Record<string, CSSProperties> = {
     color: color.primary600,
     cursor: "pointer",
   },
-  actions: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" },
   menu: {
     position: "absolute",
     top: "calc(100% + 0.25rem)",
@@ -145,6 +185,9 @@ export const styles: Record<string, CSSProperties> = {
     background: color.background,
     boxShadow: "0 4px 12px rgb(0 0 0 / 0.12)",
   },
+  /** Overlaid on `menu` when the trigger sits at the right edge of a header
+   * row — a left-aligned dropdown there would overflow the panel. */
+  menuEnd: { left: "auto", right: 0 },
   menuItem: {
     fontSize: "0.8125rem",
     fontWeight: 500,
@@ -179,6 +222,23 @@ export const styles: Record<string, CSSProperties> = {
   },
   errorText: { fontSize: "0.8125rem", color: color.error },
   checkbox: { flex: "0 0 auto", cursor: "pointer" },
+  /** Icon-only action sitting inline in a header row — same chrome as
+   * `iconButton` without its absolute positioning, which only suits an
+   * overlay pinned to the corner of a scrolling box. */
+  iconAction: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flex: "0 0 auto",
+    width: "1.75rem",
+    height: "1.75rem",
+    padding: 0,
+    borderRadius: "0.25rem",
+    border: `1px solid ${color.border}`,
+    background: "transparent",
+    color: color.textSecondary,
+    cursor: "pointer",
+  },
   iconButton: {
     position: "absolute",
     top: "0.375rem",
@@ -243,6 +303,15 @@ export const styles: Record<string, CSSProperties> = {
     overflow: "auto",
     padding: "1rem",
   },
+  /** `TryItSplitPanel`'s own root: header row above the two columns. Fills
+   * the modal and never scrolls itself — the columns below do. */
+  splitRoot: {
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
   /** Used instead of `modalBody` by the reference-panel button's modal — a
    * row of two independently-scrolling columns rather than one vertically
    * scrolling column, so this container itself never scrolls. */
@@ -262,6 +331,73 @@ export const styles: Record<string, CSSProperties> = {
     flexDirection: "column",
     gap: "1.25rem",
     fontSize: "0.8125rem",
+  },
+  /** The modal's request column, which unlike the response column is split
+   * into a scrolling area and a pinned `sendFooter` — so `Send` stays
+   * reachable without scrolling past every params table to find it. */
+  splitPane: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  /** `splitColumn`'s scrolling half, for use inside `splitPane`. */
+  splitScroll: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    padding: "1rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.25rem",
+    fontSize: "0.8125rem",
+  },
+  /** `Send` pinned below the modal's scrolling request column. Opaque
+   * background, not transparent: content scrolls underneath it. */
+  sendFooter: {
+    flex: "0 0 auto",
+    padding: "0.75rem 1rem",
+    borderTop: `1px solid ${color.border}`,
+    background: color.background,
+  },
+  /** Response section before anything has been sent — a centered mark and a
+   * line of text where the body will appear, rather than a bare heading over
+   * blank space. */
+  emptyState: {
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.625rem",
+    padding: "1.5rem 1rem",
+    textAlign: "center",
+    color: color.textMuted,
+  },
+  /** Overlaid on `section` while the response is empty, so the placeholder
+   * can center itself in the column's full height instead of sitting under
+   * the heading. A no-op in the tab, whose height is content-driven and so
+   * has no spare space to grow into. */
+  sectionFill: { flex: 1, minHeight: 0 },
+  /** Wraps the tab's request half (server through `Send`) so the sticky
+   * footer is bounded by it: `position: sticky` follows the viewport only
+   * while its own container is on screen, so without this the bar would go
+   * on hovering over the response section below it. */
+  requestGroup: { display: "flex", flexDirection: "column", gap: "1.25rem" },
+  /** The tab's equivalent. The tab is a free-flowing column in the host's
+   * page with no bottom edge to pin to, so this sticks to the viewport
+   * bottom while the panel is on screen and settles into place at the end
+   * of the content. Same opaque background and top border — without them
+   * the tables would scroll visibly through it. */
+  sendFooterSticky: {
+    position: "sticky",
+    bottom: 0,
+    paddingTop: "0.75rem",
+    paddingBottom: "0.75rem",
+    borderTop: `1px solid ${color.border}`,
+    background: color.background,
   },
 };
 

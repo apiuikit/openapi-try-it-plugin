@@ -5,8 +5,8 @@ import type { OpenAPIOperationPluginContext } from "apiuikit/plugin";
 import { useEscapeLayer } from "../escapeLayer";
 import { createTryItSplitPanel } from "../TryItSplitPanel";
 import type { TryItPluginOptions } from "../types";
-import { color, methodTagStyle, styles, tryItHeaderStyle, tryItRowStyle } from "../styles";
-import { CloseIcon, ExpandIcon, PlayIcon } from "./icons";
+import { styles, tryItHeaderStyle, tryItRowStyle } from "../styles";
+import { ExpandIcon, PlayIcon } from "./icons";
 
 /** Where the trigger lives, which is all that differs between the two
  * modal-based plugins: a full-width row in the Reference panel body, or a
@@ -84,50 +84,17 @@ function createTryItLauncher(options: TryItPluginOptions, variant: TriggerVarian
                 style={styles.modalContentWide}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div style={styles.modalHeader}>
-                  {/* Method + path, not a static "Try it" — identifies which
-                      operation this modal is for, since the reference panel
-                      behind it is dimmed and its own header isn't visible. */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      minWidth: 0,
-                    }}
-                  >
-                    <span style={methodTagStyle(method)}>
-                      {method.toUpperCase()}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.8125rem",
-                        fontWeight: 600,
-                        color: color.textPrimary,
-                        fontFamily:
-                          "ui-monospace, SFMono-Regular, Menlo, monospace",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {path}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    style={styles.secondaryButton}
-                    title="Close"
-                    aria-label="Close"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <CloseIcon />
-                  </button>
-                </div>
+                {/* The panel renders its own header row — method, the built
+                    request URL, export and this modal's close button — since
+                    the URL and export menu both come from its state. The
+                    header identifies the operation the way a static "Try it"
+                    title wouldn't, which matters while the reference panel
+                    behind it is dimmed and its own header isn't visible. */}
                 <TryItSplitPanel
                   document={document}
                   method={method}
                   path={path}
+                  onClose={() => setIsOpen(false)}
                 />
               </div>
             </div>,
