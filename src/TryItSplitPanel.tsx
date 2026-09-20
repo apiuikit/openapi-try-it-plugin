@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { OpenAPIOperationPluginContext } from "apiuikit/plugin";
 import { AuthPanel } from "./components/AuthPanel";
 import { BinaryBodyEditor } from "./components/BinaryBodyEditor";
@@ -10,8 +11,10 @@ import { ResponseViewer } from "./components/ResponseViewer";
 import { SendFooter } from "./components/SendFooter";
 import { ServerVariables } from "./components/ServerVariables";
 import { CloseIcon } from "./components/icons";
+import { TRYIT_ROOT_ATTR, useResponsiveInputStyles } from "./responsiveStyles";
 import { color, styles } from "./styles";
 import type { TryItPluginOptions } from "./types";
+import { useIsNarrowViewport } from "./useMediaQuery";
 import { useTryItState } from "./useTryItState";
 
 interface TryItSplitPanelProps extends OpenAPIOperationPluginContext {
@@ -39,7 +42,17 @@ const COOKIE_HEADER_WARNING =
 export function createTryItSplitPanel(options: TryItPluginOptions = {}) {
   return function TryItSplitPanel({ onClose, ...context }: TryItSplitPanelProps) {
     const state = useTryItState(options, context);
-    const { operation, method, path } = state;
+    const { operation, method, path, outcome } = state;
+    const isNarrow = useIsNarrowViewport();
+    useResponsiveInputStyles();
+    const responseRef = useRef<HTMLDivElement>(null);
+
+    // Stacked, the response sits below the whole request form — bring it
+    // into view once it arrives rather than leaving it off-screen.
+    useEffect(() => {
+      if (isNarrow && outcome) responseRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [isNarrow, outcome]);
+
     if (!operation) return null;
 
     const {
@@ -70,61 +83,89 @@ export function createTryItSplitPanel(options: TryItPluginOptions = {}) {
       binaryFile,
       setBinaryFile,
       sending,
-      outcome,
       currentRequest,
       handleSend,
     } = state;
 
+    const header = (
+      <RequestUrlBar variant="header" method={method} url={currentRequest().url}>
+        <ExportMenu
+          iconOnly
+          name={operation.summary ?? operation.operationId ?? `${method.toUpperCase()} ${path}`}
+          method={method}
+          path={path}
+          getRequest={currentRequest}
+          outcome={outcome}
+        />
+        {onClose && (
+          <button type="button" style={styles.iconAction} title="Close" aria-label="Close" onClick={onClose}>
+            <CloseIcon />
+          </button>
+        )}
+      </RequestUrlBar>
+    );
+
+    const requestFields = (
+      <>
+        <ServerVariables
+          servers={servers}
+          selectedServerIndex={selectedServerIndex}
+          onSelectServer={setSelectedServerIndex}
+          values={serverVariables}
+          onChange={setServerVariables}
+        />
+
+        <ParamsTable title="Path variables" rows={pathParams} onChange={setPathParams} />
+        <ParamsTable title="Query parameters" rows={queryParams} onChange={setQueryParams} allowCustomRows />
+        <ParamsTable title="Headers" rows={headerParams} onChange={setHeaderParams} allowCustomRows />
+        <ParamsTable title="Cookies" rows={cookieParams} onChange={setCookieParams} allowCustomRows warning={COOKIE_HEADER_WARNING} />
+
+        <AuthPanel
+          requirements={security}
+          selectedIndex={selectedSecurityIndex}
+          onSelectRequirement={setSelectedSecurityIndex}
+          credentials={credentials}
+          onChangeCredentials={setCredentials}
+        />
+
+        {bodyMedia?.mode === "text" && (
+          <BodyEditor contentType={bodyMedia.contentType} value={bodyText} onChange={setBodyText} error={bodyError} />
+        )}
+        {bodyMedia?.mode === "multipart" && <MultipartBodyEditor rows={multipartFields} onChange={setMultipartFields} />}
+        {bodyMedia?.mode === "binary" && (
+          <BinaryBodyEditor contentType={bodyMedia.contentType} file={binaryFile} onChange={setBinaryFile} />
+        )}
+      </>
+    );
+
+    // Too narrow for two columns: one scrolling column, the tab's arrangement
+    // (request, sticky `Send`, response) inside the modal's fixed height.
+    if (isNarrow) {
+      return (
+        <div {...{ [TRYIT_ROOT_ATTR]: "" }} style={styles.splitRoot}>
+          {header}
+          <div style={styles.splitScroll}>
+            <div style={styles.requestGroup}>
+              {requestFields}
+              <SendFooter variant="sticky" sending={sending} onSend={handleSend} />
+            </div>
+            {/* `flexShrink: 0` keeps the empty state's `sectionFill` from
+                collapsing it to nothing under a long request form. */}
+            <div ref={responseRef} style={{ flexShrink: 0 }}>
+              <ResponseViewer outcome={outcome} sending={sending} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div style={styles.splitRoot}>
-        <RequestUrlBar variant="header" method={method} url={currentRequest().url}>
-          <ExportMenu
-            iconOnly
-            name={operation.summary ?? operation.operationId ?? `${method.toUpperCase()} ${path}`}
-            method={method}
-            path={path}
-            getRequest={currentRequest}
-            outcome={outcome}
-          />
-          {onClose && (
-            <button type="button" style={styles.iconAction} title="Close" aria-label="Close" onClick={onClose}>
-              <CloseIcon />
-            </button>
-          )}
-        </RequestUrlBar>
+      <div {...{ [TRYIT_ROOT_ATTR]: "" }} style={styles.splitRoot}>
+        {header}
 
         <div style={styles.modalBodySplit}>
           <div style={styles.splitPane}>
-            <div style={styles.splitScroll}>
-              <ServerVariables
-                servers={servers}
-                selectedServerIndex={selectedServerIndex}
-                onSelectServer={setSelectedServerIndex}
-                values={serverVariables}
-                onChange={setServerVariables}
-              />
-
-              <ParamsTable title="Path variables" rows={pathParams} onChange={setPathParams} />
-              <ParamsTable title="Query parameters" rows={queryParams} onChange={setQueryParams} allowCustomRows />
-              <ParamsTable title="Headers" rows={headerParams} onChange={setHeaderParams} allowCustomRows />
-              <ParamsTable title="Cookies" rows={cookieParams} onChange={setCookieParams} allowCustomRows warning={COOKIE_HEADER_WARNING} />
-
-              <AuthPanel
-                requirements={security}
-                selectedIndex={selectedSecurityIndex}
-                onSelectRequirement={setSelectedSecurityIndex}
-                credentials={credentials}
-                onChangeCredentials={setCredentials}
-              />
-
-              {bodyMedia?.mode === "text" && (
-                <BodyEditor contentType={bodyMedia.contentType} value={bodyText} onChange={setBodyText} error={bodyError} />
-              )}
-              {bodyMedia?.mode === "multipart" && <MultipartBodyEditor rows={multipartFields} onChange={setMultipartFields} />}
-              {bodyMedia?.mode === "binary" && (
-                <BinaryBodyEditor contentType={bodyMedia.contentType} file={binaryFile} onChange={setBinaryFile} />
-              )}
-            </div>
+            <div style={styles.splitScroll}>{requestFields}</div>
 
             <SendFooter sending={sending} onSend={handleSend} />
           </div>

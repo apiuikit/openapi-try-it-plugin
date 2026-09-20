@@ -31,7 +31,9 @@ export function MultipartBodyEditor({ rows, onChange }: MultipartBodyEditorProps
       <div style={styles.table}>
         {rows.map((row) => (
           <div key={row.id} style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={styles.row}>
+            {/* Up to five controls in one row — on a narrow screen the value
+                wraps below rather than shrinking past usability. */}
+            <div style={{ ...styles.row, flexWrap: "wrap" }}>
               <input
                 type="checkbox"
                 style={styles.checkbox}
@@ -48,14 +50,14 @@ export function MultipartBodyEditor({ rows, onChange }: MultipartBodyEditorProps
               />
               {row.isFile ? (
                 <input
-                  style={styles.input}
+                  style={{ ...styles.input, minWidth: "8rem" }}
                   type="file"
                   multiple
                   onChange={(event) => updateRow(row.id, { files: event.target.files ? Array.from(event.target.files) : [] })}
                 />
               ) : (
                 <input
-                  style={styles.input}
+                  style={{ ...styles.input, minWidth: "8rem" }}
                   value={row.value}
                   placeholder={row.required ? "required" : "value"}
                   onChange={(event) => updateRow(row.id, { value: event.target.value })}

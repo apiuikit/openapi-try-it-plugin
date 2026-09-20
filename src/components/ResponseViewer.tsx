@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { FetchOutcome } from "../types";
 import { color, statusColor, styles } from "../styles";
 import { useEscapeLayer } from "../escapeLayer";
+import { useIsNarrowViewport } from "../useMediaQuery";
 import { CloseIcon, ExpandIcon, SatelliteIcon } from "./icons";
 
 interface ResponseViewerProps {
@@ -71,14 +72,22 @@ function JsonTree({ src }: { src: object }) {
 
 function JsonModal({ src, onClose }: { src: object; onClose: () => void }) {
   const { portalHost } = useDocumentContext();
+  const isNarrow = useIsNarrowViewport();
 
   useEscapeLayer(true, onClose);
 
   if (!portalHost) return null;
 
   return createPortal(
-    <div data-tryit-modal="" style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.modalContent} onClick={(event) => event.stopPropagation()}>
+    <div
+      data-tryit-modal=""
+      style={isNarrow ? { ...styles.modalOverlay, ...styles.modalOverlayCompact } : styles.modalOverlay}
+      onClick={onClose}
+    >
+      <div
+        style={isNarrow ? { ...styles.modalContent, ...styles.modalContentCompact } : styles.modalContent}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div style={styles.modalHeader}>
           <span style={styles.sectionTitle}>Response</span>
           <button type="button" style={styles.secondaryButton} title="Close" aria-label="Close" onClick={onClose}>

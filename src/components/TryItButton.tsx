@@ -5,6 +5,7 @@ import type { OpenAPIOperationPluginContext } from "apiuikit/plugin";
 import { useEscapeLayer } from "../escapeLayer";
 import { createTryItSplitPanel } from "../TryItSplitPanel";
 import type { TryItPluginOptions } from "../types";
+import { useIsNarrowViewport } from "../useMediaQuery";
 import { styles, tryItHeaderStyle, tryItRowStyle } from "../styles";
 import { ExpandIcon, PlayIcon } from "./icons";
 
@@ -26,6 +27,7 @@ function createTryItLauncher(options: TryItPluginOptions, variant: TriggerVarian
   return function TryItLauncher({ document, method, path }: OpenAPIOperationPluginContext) {
     const { portalHost, config } = useDocumentContext();
     const [isOpen, setIsOpen] = useState(false);
+    const isNarrow = useIsNarrowViewport();
     const operation = document.paths?.[path]?.[method];
 
     // Escape closes this modal only — not apiuikit's operation panel behind
@@ -77,11 +79,11 @@ function createTryItLauncher(options: TryItPluginOptions, variant: TriggerVarian
           createPortal(
             <div
               data-tryit-modal=""
-              style={styles.modalOverlay}
+              style={isNarrow ? { ...styles.modalOverlay, ...styles.modalOverlayCompact } : styles.modalOverlay}
               onClick={() => setIsOpen(false)}
             >
               <div
-                style={styles.modalContentWide}
+                style={isNarrow ? { ...styles.modalContentWide, ...styles.modalContentCompact } : styles.modalContentWide}
                 onClick={(event) => event.stopPropagation()}
               >
                 {/* The panel renders its own header row — method, the built

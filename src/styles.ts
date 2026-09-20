@@ -290,6 +290,11 @@ export const styles: Record<string, CSSProperties> = {
     flexDirection: "column",
     overflow: "hidden",
   },
+  /** Overlaid on `modalOverlay` / `modalContent(Wide)` on a narrow viewport:
+   * the modal fills the screen edge to edge, since the 2rem inset and
+   * rounded frame would cost a phone a large share of its width. */
+  modalOverlayCompact: { padding: 0 },
+  modalContentCompact: { border: "none", borderRadius: 0 },
   modalHeader: {
     display: "flex",
     alignItems: "center",

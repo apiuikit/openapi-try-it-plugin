@@ -9,6 +9,7 @@ import { RequestUrlBar } from "./components/RequestUrlBar";
 import { ResponseViewer } from "./components/ResponseViewer";
 import { SendFooter } from "./components/SendFooter";
 import { ServerVariables } from "./components/ServerVariables";
+import { TRYIT_ROOT_ATTR, useResponsiveInputStyles } from "./responsiveStyles";
 import { styles } from "./styles";
 import type { TryItPluginOptions } from "./types";
 import { useTryItState } from "./useTryItState";
@@ -28,6 +29,7 @@ export function createTryItPanel(options: TryItPluginOptions = {}) {
   return function TryItPanel(context: OpenAPIOperationPluginContext) {
     const state = useTryItState(options, context);
     const { operation, method, path } = state;
+    useResponsiveInputStyles();
     if (!operation) return null;
 
     const {
@@ -64,7 +66,7 @@ export function createTryItPanel(options: TryItPluginOptions = {}) {
     } = state;
 
     return (
-      <div style={styles.panel}>
+      <div {...{ [TRYIT_ROOT_ATTR]: "" }} style={styles.panel}>
         <RequestUrlBar method={method} url={currentRequest().url}>
           <ExportMenu
             iconOnly
